@@ -1,0 +1,92 @@
+name: Terraform
+
+on: [push]
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: # Add environments and respective directories
+        include:
+          - env: eth
+            dir: ethereum/grafana-alerts
+    env:
+      TF_VAR_env: ${{ matrix.env }}
+      TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
+      TF_VAR_grafana_key: ${{ secrets.GRAFANA_USER_PASSWORD_ETHEREUM }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_ETHEREUM }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=terraform-state-grafana-alerts" -backend-config="key=${{ matrix.env }}/grafana-alerts/terraform.tfstate" -backend-config="region=ap-south-1" -reconfigure
+        working-directory: ./${{ matrix.dir }}
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: ./${{ matrix.dir }}
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v2
+        with:
+          name: tfplan-${{ matrix.env }}
+          path: ./${{ matrix.dir }}/tfplan
+
+  apply:
+    name: Terraform Apply
+    if: github.ref == 'refs/heads/main'
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env: eth
+            dir: ethereum/grafana-alerts
+
+    environment: ${{ matrix.env }}
+    env:
+      TF_VAR_env: ${{ matrix.env }}
+      TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
+      TF_VAR_grafana_key: ${{ secrets.GRAFANA_USER_PASSWORD_ETHEREUM }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_ETHEREUM }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=terraform-state-grafana-alerts" -backend-config="key=${{ matrix.env }}/grafana-alerts/terraform.tfstate" -backend-config="region=ap-south-1" -reconfigure
+        working-directory: ./${{ matrix.dir }}
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v2
+        with:
+          name: tfplan-${{ matrix.env }}
+          path: ./${{ matrix.dir }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./${{ matrix.dir }}
