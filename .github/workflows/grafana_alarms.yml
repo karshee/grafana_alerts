@@ -18,7 +18,6 @@ jobs:
     env:
       TF_VAR_env: ${{ matrix.env }}
       TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
-      TF_VAR_grafana_key: ${{ secrets.${{ matrix.key }} }} # testing
       TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_ETHEREUM }}
 
     steps:
