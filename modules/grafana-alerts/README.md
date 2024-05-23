@@ -36,29 +36,28 @@ provider "pagerduty" {
 ## Usage Example
 
 ```hcl
-module "grafana_alerts" {
-  source = "./modules/grafana-alerts"
+module "grafana" {
+  source = "../modules/grafana-alerts"
 
-  env                      = "test"
-  data_source_name         = "Prometheus - Ethereum Mainnet"
-  notification_email_addresses = ["alert@example.com"]
-  pagerduty_integration_key = "your_pagerduty_integration_key_here"
+  env   = "eth"
   rules = {
-    "ram-used" = {
-      expression           = "100 - ((avg_over_time(node_memory_MemAvailable_bytes{instance=\"localhost:9100\",job=\"node\"}[$__rate_interval]) * 100) / avg_over_time(node_memory_MemTotal_bytes{instance=\"localhost:9100\",job=\"node\"}[$__rate_interval]))",
-      threshold            = 90,
-      firing_frequency     = "1m",
-      threshold_direction  = "gt"
-    },
-    "cpu-usage" = {
-      expression           = "(sum by(instance) (irate(node_cpu_seconds_total{instance=\"localhost:9100\",job=\"node\", mode!=\"idle\"}[1m])) / on(instance) group_left sum by (instance)((irate(node_cpu_seconds_total{instance=\"localhost:9100\",job=\"node\"}[1m])))) * 100",
-      threshold            = 80,
-      firing_frequency     = "1m",
-      threshold_direction  = "gt"
+    "lo_transmit" = {
+      expression = "irate(node_network_transmit_bytes_total{instance=\"${local.host}\",job=\"${local.job_name}\",device=\"lo\"}[$__rate_interval])*8"
+      threshold  = 1
+      firing_frequency = "5m"
+      threshold_direction = "lt"
+      severity           = "warning"
+      class              = "Network"
+      component          = "NIC"
+      group              = "Ethereum Mainnet (Latitude)"
+      summary            = "Network transmit on loopback has dropped to zero"
+      source             = "https://monitor.ethereum.atalma.io"
+      client             = "Ethereum"
+      client_url         = "https://monitor.ethereum.atalma.io"
     }
   }
+  data_source_name = "Prometheus - Ethereum Mainnet"
 }
-
 ```
 
 ## Notifications Configuration
