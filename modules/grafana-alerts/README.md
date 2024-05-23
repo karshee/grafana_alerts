@@ -15,7 +15,7 @@ Ensure the Grafana provider is configured in your root Terraform configuration:
 
 ```hcl
 provider "grafana" {
-  url  = "http://localhost:3000"
+  url  = "http://localhost:3000" 
   auth = "YOUR_AUTH_TOKEN"
 }
 provider "pagerduty" {

@@ -1,0 +1,45 @@
+name: Terraform Destroy Grafana Alerts - Celo-Atalma
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm destruction of the grafana alerts in Celo-Atalma environment'
+        required: true
+        type: string
+
+jobs:
+  destroy:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'destroy' }}
+    runs-on: ubuntu-latest
+    name: Terraform Destroy Grafana Alerts - Celo-Atalma
+    env:
+      TF_VAR_env: celo-atalma
+      TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
+      TF_VAR_grafana_key: ${{ secrets.GRAFANA_USER_PASSWORD_CELO_ATALMA }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_CELO }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Terraform Init
+        run: |
+          terraform init -backend-config="bucket=terraform-state-grafana-alerts" \
+                         -backend-config="key=Celo-Atalma/grafana-alerts/terraform.tfstate" \
+                         -backend-config="region=ap-south-1" \
+                         -reconfigure
+        working-directory: ./Celo-Atalma/grafana-alerts
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: ./celo-atalma

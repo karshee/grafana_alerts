@@ -30,6 +30,20 @@ resource "grafana_rule_group" "rule_groups" {
   rule {
     name      = each.key
     condition = "C"
+    no_data_state  = "Alerting"
+    exec_err_state = "Alerting"
+    for            = lookup(each.value, "firing_frequency", local.default_firing_frequency)
+    annotations  = {
+      severity   = each.value.severity
+      class      = each.value.class
+      component  = each.value.component
+      group      = each.value.group
+      summary    = each.value.summary
+      source     = each.value.source
+      client     = each.value.client
+      client_url = each.value.client_url   
+    }    
+    is_paused = false    
 
     data {
       ref_id = "A"
@@ -92,26 +106,5 @@ resource "grafana_rule_group" "rule_groups" {
         type        = "threshold"
       })
     }
-
-    no_data_state  = "NoData"
-    exec_err_state = "Error"
-    for            = lookup(each.value, "firing_frequency", local.default_firing_frequency)
-    annotations = {
-      description = "${var.env} ${each.key} alert"
-      runbook_url = ""
-      summary     = ""
-    }
-    labels = {
-      severity = "high"
-    }
-    is_paused = false
   }
-}
-
-resource "pagerduty_incident_custom_field" "false_alarm" {
-  name          = "false_alarm"
-  display_name  = "False Alarm"
-  data_type     = "boolean"
-  field_type    = "single_value"
-  default_value = "false"
 }

@@ -18,11 +18,18 @@ resource "null_resource" "validation" {
 
 #### PagerDuty notification channel
 resource "grafana_contact_point" "pagerduty_contact_point" {
-  count = var.pagerduty_integration_key != "" ? 1 : 0
-  name                = "${var.env}-PagerDuty"
-
+  count        = var.pagerduty_integration_key != "" ? 1 : 0
+  name         = "${var.env}-PagerDuty"
   pagerduty {
     integration_key = var.pagerduty_integration_key
+    severity   = "{{ range .Alerts.Firing }}{{ .Annotations.severity }}{{ end }}"
+    class      = "{{ range .Alerts.Firing }}{{ .Annotations.class }}{{ end }}"
+    component  = "{{ range .Alerts.Firing }}{{ .Annotations.component }}{{ end }}"
+    group      = "{{ range .Alerts.Firing }}{{ .Annotations.group }}{{ end }}"
+    summary    = "{{ range .Alerts.Firing }}{{ .Annotations.summary }}{{ end }}"
+    source     = "{{ range .Alerts.Firing }}{{ .Annotations.source }}{{ end }}"
+    client     = "{{ range .Alerts.Firing }}{{ .Annotations.client }}{{ end }}"
+    client_url = "{{ range .Alerts.Firing }}{{ .Annotations.client_url }}{{ end }}"
   }
 }
 

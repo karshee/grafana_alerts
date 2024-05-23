@@ -7,14 +7,18 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     strategy:
-      matrix: # Add environments and respective directories
+      matrix: # Add environments(name of directory containing terraform) and their respective grafana user secrets keys
         include:
-          - env: eth
-            dir: ethereum/grafana-alerts
+          - env: ethereum
+            key: GRAFANA_USER_PASSWORD_ETHEREUM
+          - env: celo-atalma
+            key: GRAFANA_USER_PASSWORD_ATALMA
+          - env: celo-impact
+            key: GRAFANA_USER_PASSWORD_IMPACT
     env:
       TF_VAR_env: ${{ matrix.env }}
       TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
-      TF_VAR_grafana_key: ${{ secrets.GRAFANA_USER_PASSWORD_ETHEREUM }}
+      TF_VAR_grafana_key: ${{ secrets.${{ matrix.key }} }} # testing
       TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_ETHEREUM }}
 
     steps:
@@ -31,19 +35,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      - name: Set GRAFANA_KEY environment variable
+        run: echo "TF_VAR_grafana_key=${{ secrets[matrix.key] }}" >> $GITHUB_ENV
+
       - name: Terraform Init
         run: terraform init -backend-config="bucket=terraform-state-grafana-alerts" -backend-config="key=${{ matrix.env }}/grafana-alerts/terraform.tfstate" -backend-config="region=ap-south-1" -reconfigure
-        working-directory: ./${{ matrix.dir }}
+        working-directory: ./${{ matrix.env }}
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        working-directory: ./${{ matrix.dir }}
+        working-directory: ./${{ matrix.env }}
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v2
         with:
           name: tfplan-${{ matrix.env }}
-          path: ./${{ matrix.dir }}/tfplan
+          path: ./${{ matrix.env }}/tfplan
 
   apply:
     name: Terraform Apply
@@ -51,16 +58,19 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     strategy:
-      matrix:
+      matrix: # Add environments(name of directory containing terraform) and their respective grafana user secrets keys
         include:
-          - env: eth
-            dir: ethereum/grafana-alerts
+          - env: ethereum
+            key: GRAFANA_USER_PASSWORD_ETHEREUM
+          - env: celo-atalma
+            key: GRAFANA_USER_PASSWORD_ATALMA
+          - env: celo-impact
+            key: GRAFANA_USER_PASSWORD_IMPACT
 
     environment: ${{ matrix.env }}
     env:
       TF_VAR_env: ${{ matrix.env }}
       TF_VAR_pagerduty_api_key: ${{ secrets.PD_API_KEY }}
-      TF_VAR_grafana_key: ${{ secrets.GRAFANA_USER_PASSWORD_ETHEREUM }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PD_INTEGRATION_KEY_ETHEREUM }}
 
     steps:
@@ -77,16 +87,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      - name: Set GRAFANA_KEY environment variable
+        run: echo "TF_VAR_grafana_key=${{ secrets[matrix.key] }}" >> $GITHUB_ENV
+
       - name: Terraform Init
         run: terraform init -backend-config="bucket=terraform-state-grafana-alerts" -backend-config="key=${{ matrix.env }}/grafana-alerts/terraform.tfstate" -backend-config="region=ap-south-1" -reconfigure
-        working-directory: ./${{ matrix.dir }}
+        working-directory: ./${{ matrix.env }}
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v2
         with:
           name: tfplan-${{ matrix.env }}
-          path: ./${{ matrix.dir }}
+          path: ./${{ matrix.env }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-        working-directory: ./${{ matrix.dir }}
+        working-directory: ./${{ matrix.env }}

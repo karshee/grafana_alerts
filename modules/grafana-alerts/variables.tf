@@ -15,6 +15,14 @@ variable "rules" {
     threshold            : number
     firing_frequency     : string
     threshold_direction  : string  # "lt" for less than, "gt" for greater than
+    severity             : string
+    class                : string
+    component            : string
+    group                : string
+    summary              : string
+    source               : string
+    client               : string
+    client_url           : string
   }))
 }
 
